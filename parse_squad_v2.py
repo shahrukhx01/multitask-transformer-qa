@@ -1,5 +1,8 @@
 import json
 from pathlib import Path
+from transformers import DistilBertTokenizerFast
+
+tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
 
 
 def read_squad(path):
@@ -44,6 +47,24 @@ def add_end_idx(answers, contexts):
             )  # When the gold label is off by two characters
 
 
+def add_token_positions(encodings, answers):
+    start_positions = []
+    end_positions = []
+    for i in range(len(answers)):
+        start_positions.append(encodings.char_to_token(i, answers[i]["answer_start"]))
+        end_positions.append(encodings.char_to_token(i, answers[i]["answer_end"] - 1))
+
+        # if start position is None, the answer passage has been truncated
+        if start_positions[-1] is None:
+            start_positions[-1] = tokenizer.model_max_length
+        if end_positions[-1] is None:
+            end_positions[-1] = tokenizer.model_max_length
+
+    encodings.update(
+        {"start_positions": start_positions, "end_positions": end_positions}
+    )
+
+
 def get_squad_v2():
     train_contexts, train_questions, train_answers = read_squad("squad/train-v2.0.json")
     val_contexts, val_questions, val_answers = read_squad("squad/dev-v2.0.json")
@@ -51,31 +72,18 @@ def get_squad_v2():
     add_end_idx(train_answers, train_contexts)
     add_end_idx(val_answers, val_contexts)
 
+    train_encodings = tokenizer(
+        train_contexts, train_questions, truncation=True, padding=True
+    )
+    val_encodings = tokenizer(
+        val_contexts, val_questions, truncation=True, padding=True
+    )
+
     squad_dict = {}
-    train_examples, val_examples = [], []
-    for train_context, train_question, train_answer in zip(
-        train_contexts, train_questions, train_answers
-    ):
-        train_examples.append(
-            {
-                "question": train_question,
-                "context": train_context,
-                "answer": train_answer,
-            }
-        )
+    add_token_positions(train_encodings, train_answers)
+    add_token_positions(val_encodings, val_answers)
 
-    for val_context, val_question, val_answer in zip(
-        val_contexts, val_questions, val_answers
-    ):
-        val_examples.append(
-            {
-                "question": val_question,
-                "context": val_context,
-                "answer": val_answer,
-            }
-        )
+    squad_dict["train"] = train_encodings
 
-    squad_dict["train"] = train_examples
-
-    squad_dict["validation"] = val_examples
+    squad_dict["validation"] = val_encodings
     return squad_dict
