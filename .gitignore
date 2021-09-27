@@ -133,7 +133,7 @@ dmypy.json
 
 # PyTorch model files
 *.bin
-*.json
+model/*.json
 merges.txt
 output/*
 mlruns/*
