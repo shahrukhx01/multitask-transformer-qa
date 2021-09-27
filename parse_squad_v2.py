@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from transformers import DistilBertTokenizerFast
 
-tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
+tokenizer = DistilBertTokenizerFast.from_pretrained("roberta-base")
 
 
 def read_squad(path):
