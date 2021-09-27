@@ -8,14 +8,13 @@ from tqdm.auto import tqdm
 from tqdm import tqdm as tqdm
 
 
-from parse_squad_v2 import get_squad_v2
 from accelerate import Accelerator
 from filelock import FileLock
 from transformers import set_seed
 from transformers.file_utils import is_offline_mode
 from utils.arguments import parse_args
 from multitask_model import BertForSequenceClassification
-from preprocess import convert_to_features
+from preprocess import convert_to_features_boolq, convert_to_features_squad_v2
 from multitask_data_collator import MultitaskTrainer, NLPDataCollator
 from multitask_eval import multitask_eval_fn
 from checkpoint_model import save_model
@@ -47,7 +46,13 @@ def main():
     # 'text' is found. You can easily tweak this behavior (see below).
 
     dataset_dict = {
-        "squad_v2": get_squad_v2(),
+        "squad_v2": load_dataset(
+            "parse_squad_v2.py",
+            data_files={
+                "train": "squad/train-v2.0.json",
+                "validation": "squad/dev-v2.0.json",
+            },
+        ),
         "boolq": load_dataset("boolq"),
     }
 
@@ -57,32 +62,27 @@ def main():
         print("validation", dataset_dict[task_name]["validation"][0])
         print()
 
-    """model_names = [args.model_name_or_path] * 2
-    config_files = model_names
-    for idx, task_name in enumerate(["quora_keyword_pairs", "spaadia_squad_pairs"]):
-        model_file = Path(f"./{task_name}_model/pytorch_model.bin")
-        config_file = Path(f"./{task_name}_model/config.json")
-        if model_file.is_file():
-            model_names[idx] = f"./{task_name}_model"
-
-        if config_file.is_file():
-            config_files[idx] = f"./{task_name}_model"
-
     multitask_model = BertForSequenceClassification.from_pretrained(
-        "prajjwal1/bert-mini",
-        task_labels_map={"quora_keyword_pairs": 2, "spaadia_squad_pairs": 2},
+        args.model_name_or_path,
+        task_labels_map={"squad_v2": 2, "boolq": 2},
     )
 
     print(multitask_model.bert.embeddings.word_embeddings.weight.data_ptr())
 
     convert_func_dict = {
-        "quora_keyword_pairs": convert_to_features,
-        "spaadia_squad_pairs": convert_to_features,
+        "boolq": convert_to_features_boolq,
+        "squad_v2": convert_to_features_squad_v2,
     }
 
     columns_dict = {
-        "quora_keyword_pairs": ["input_ids", "attention_mask", "labels"],
-        "spaadia_squad_pairs": ["input_ids", "attention_mask", "labels"],
+        "squad_v2": [
+            "input_ids",
+            "attention_mask",
+            "answer_start",
+            "answer_end",
+            "answer",
+        ],
+        "boolq": ["input_ids", "attention_mask", "labels"],
     }
 
     features_dict = {}
@@ -114,7 +114,7 @@ def main():
     train_dataset = {
         task_name: dataset["train"] for task_name, dataset in features_dict.items()
     }
-
+    """
     trainer = MultitaskTrainer(
         model=multitask_model,
         args=transformers.TrainingArguments(

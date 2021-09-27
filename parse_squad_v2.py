@@ -1,8 +1,13 @@
 import json
 from pathlib import Path
-from transformers import DistilBertTokenizerFast
+import json
+import datasets
+from random import randint
+from nlp import DatasetInfo, BuilderConfig, SplitGenerator, Split, utils
+import pandas as pd
 
-tokenizer = DistilBertTokenizerFast.from_pretrained("roberta-base")
+
+logger = datasets.logging.get_logger(__name__)
 
 
 def read_squad(path):
@@ -45,45 +50,77 @@ def add_end_idx(answers, contexts):
             answer["answer_end"] = (
                 end_idx - 2
             )  # When the gold label is off by two characters
+    return answers
 
 
-def add_token_positions(encodings, answers):
-    start_positions = []
-    end_positions = []
-    for i in range(len(answers)):
-        start_positions.append(encodings.char_to_token(i, answers[i]["answer_start"]))
-        end_positions.append(encodings.char_to_token(i, answers[i]["answer_end"] - 1))
+class DatasetConfig(datasets.BuilderConfig):
+    """BuilderConfig for Dataset."""
 
-        # if start position is None, the answer passage has been truncated
-        if start_positions[-1] is None:
-            start_positions[-1] = tokenizer.model_max_length
-        if end_positions[-1] is None:
-            end_positions[-1] = tokenizer.model_max_length
-
-    encodings.update(
-        {"start_positions": start_positions, "end_positions": end_positions}
-    )
+    def __init__(self, **kwargs):
+        """BuilderConfig for SQuADV2Dataset.
+        Args:
+          **kwargs: keyword arguments forwarded to super.
+        """
+        super(DatasetConfig, self).__init__(**kwargs)
 
 
-def get_squad_v2():
-    train_contexts, train_questions, train_answers = read_squad("squad/train-v2.0.json")
-    val_contexts, val_questions, val_answers = read_squad("squad/dev-v2.0.json")
+class SQuADV2Dataset(datasets.GeneratorBasedBuilder):
+    """SQuADV2Dataset: Version 1.0.0"""
 
-    add_end_idx(train_answers, train_contexts)
-    add_end_idx(val_answers, val_contexts)
+    BUILDER_CONFIGS = [
+        DatasetConfig(
+            name="plain_text",
+            version=datasets.Version("1.0.0", ""),
+            description="Plain text",
+        ),
+    ]
 
-    train_encodings = tokenizer(
-        train_contexts, train_questions, truncation=True, padding=True
-    )
-    val_encodings = tokenizer(
-        val_contexts, val_questions, truncation=True, padding=True
-    )
+    def _info(self):
+        return datasets.DatasetInfo(
+            description="Multitask dataset",
+            features=datasets.Features(
+                {
+                    "context": datasets.Value("string"),
+                    "question": datasets.Value("string"),
+                    "answer": datasets.Value("string"),
+                    "answer_start": datasets.Value("int32"),
+                    "answer_end": datasets.Value("int32"),
+                }
+            ),
+            # No default supervised_keys (as we have to pass both question
+            # and context as input).
+            supervised_keys=None,
+            homepage="",
+            citation="",
+        )
 
-    squad_dict = {}
-    add_token_positions(train_encodings, train_answers)
-    add_token_positions(val_encodings, val_answers)
+    def _split_generators(self, dl_manager):
+        downloaded_files = dl_manager.download_and_extract(self.config.data_files)
+        return [
+            datasets.SplitGenerator(
+                name=datasets.Split.TRAIN,
+                gen_kwargs={"filepath": downloaded_files["train"]},
+            ),
+            datasets.SplitGenerator(
+                name=datasets.Split.VALIDATION,
+                gen_kwargs={"filepath": downloaded_files["validation"]},
+            ),
+        ]
 
-    squad_dict["train"] = train_encodings
+    def _generate_examples(self, filepath):
+        """This function returns the examples in the raw (text) form."""
+        logger.info("generating examples from = %s", filepath)
+        contexts, questions, answers = read_squad(filepath)
 
-    squad_dict["validation"] = val_encodings
-    return squad_dict
+        answers = add_end_idx(answers, contexts)
+
+        for idx, (context, question, answer) in enumerate(
+            zip(contexts, questions, answers)
+        ):
+            yield idx, {
+                "context": context,
+                "question": question,
+                "answer": answer["text"],
+                "answer_start": answer["answer_start"],
+                "answer_end": answer["answer_end"],
+            }
