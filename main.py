@@ -81,6 +81,8 @@ def main():
             "answer_start",
             "answer_end",
             "answer",
+            "start_positions",
+            "end_positions",
         ],
         "boolq": ["input_ids", "attention_mask", "labels"],
     }
