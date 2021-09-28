@@ -18,6 +18,7 @@ class NLPDataCollator:
         self, features: List[Union[InputDataClass, Dict]]
     ) -> Dict[str, torch.Tensor]:
         first = features[0]
+        batch = {}
         if isinstance(first, dict):
             # NLP data sets current works presents features as lists of dictionary
             # (one per example), so we  will adapt the collate_batch logic for that
