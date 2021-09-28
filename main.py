@@ -13,7 +13,7 @@ from filelock import FileLock
 from transformers import set_seed
 from transformers.file_utils import is_offline_mode
 from utils.arguments import parse_args
-from multitask_model import BertForSequenceClassification
+from multitask_model import RobertaForSequenceClassification
 from preprocess import convert_to_features_boolq, convert_to_features_squad_v2
 from multitask_data_collator import MultitaskTrainer, NLPDataCollator
 from multitask_eval import multitask_eval_fn
@@ -62,7 +62,7 @@ def main():
         print("validation", dataset_dict[task_name]["validation"][0])
         print()
 
-    multitask_model = BertForSequenceClassification.from_pretrained(
+    multitask_model = RobertaForSequenceClassification.from_pretrained(
         args.model_name_or_path,
         task_labels_map={"squad_v2": 2, "boolq": 2},
     )

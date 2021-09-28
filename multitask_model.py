@@ -87,7 +87,9 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
 
         self.roberta = RobertaModel(config, add_pooling_layer=False)
         ## for squad2 QA task
-        self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
+        self.qa_outputs = nn.Linear(
+            config.hidden_size, list(self.num_labels.values())[0]
+        )
         ## for boolq
         self.classifier = RobertaClassificationHead(
             config, num_labels=list(self.num_labels.values())[1]
@@ -176,6 +178,7 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
                 hidden_states=outputs.hidden_states,
                 attentions=outputs.attentions,
             )
+
         elif task_name == list(self.num_labels.keys())[1]:
             loss = None
             logits = self.classifier(sequence_output)
