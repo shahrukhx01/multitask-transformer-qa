@@ -79,9 +79,6 @@ def main():
         "squad_v2": [
             "input_ids",
             "attention_mask",
-            "answer_start",
-            "answer_end",
-            "answer",
             "start_positions",
             "end_positions",
         ],
@@ -125,7 +122,7 @@ def main():
             overwrite_output_dir=True,
             learning_rate=1e-5,
             do_train=True,
-            num_train_epochs=args.num_train_epochs,
+            num_train_epochs=0.5,
             # Adjust batch size if this doesn't fit on the Colab GPU
             per_device_train_batch_size=args.per_device_train_batch_size,
             save_steps=3000,
