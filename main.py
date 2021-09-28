@@ -10,10 +10,11 @@ from tqdm import tqdm as tqdm
 
 from accelerate import Accelerator
 from filelock import FileLock
+import transformers
 from transformers import set_seed
 from transformers.file_utils import is_offline_mode
 from utils.arguments import parse_args
-from multitask_model import RobertaForSequenceClassification
+from multitask_model import RobertaForMultitaskQA
 from preprocess import convert_to_features_boolq, convert_to_features_squad_v2
 from multitask_data_collator import MultitaskTrainer, NLPDataCollator
 from multitask_eval import multitask_eval_fn
@@ -62,12 +63,12 @@ def main():
         print("validation", dataset_dict[task_name]["validation"][0])
         print()
 
-    multitask_model = RobertaForSequenceClassification.from_pretrained(
+    multitask_model = RobertaForMultitaskQA.from_pretrained(
         args.model_name_or_path,
         task_labels_map={"squad_v2": 2, "boolq": 2},
     )
 
-    print(multitask_model.bert.embeddings.word_embeddings.weight.data_ptr())
+    print(multitask_model.roberta.embeddings.word_embeddings.weight.data_ptr())
 
     convert_func_dict = {
         "boolq": convert_to_features_boolq,
@@ -116,7 +117,7 @@ def main():
     train_dataset = {
         task_name: dataset["train"] for task_name, dataset in features_dict.items()
     }
-    """
+
     trainer = MultitaskTrainer(
         model=multitask_model,
         args=transformers.TrainingArguments(
@@ -133,7 +134,7 @@ def main():
         train_dataset=train_dataset,
     )
     trainer.train()
-
+    """
     ## evaluate on given tasks
     multitask_eval_fn(multitask_model, args.model_name_or_path, dataset_dict)
 

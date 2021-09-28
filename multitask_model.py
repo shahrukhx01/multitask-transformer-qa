@@ -37,7 +37,8 @@ from transformers.modeling_utils import (
     prune_linear_layer,
 )
 from transformers.utils import logging
-from .configuration_roberta import RobertaConfig
+
+# from transformers.models.roberta.configuration_roberta import RobertaConfig
 
 
 logger = logging.get_logger(__name__)
@@ -46,7 +47,7 @@ _CHECKPOINT_FOR_DOC = "roberta-base"
 _CONFIG_FOR_DOC = "RobertaConfig"
 _TOKENIZER_FOR_DOC = "RobertaTokenizer"
 
-from transformers.models.roberta.modelling_roberta import (
+from transformers.models.roberta.modeling_roberta import (
     RobertaPreTrainedModel,
     RobertaClassificationHead,
     RobertaModel,
@@ -77,7 +78,7 @@ class RobertaClassificationHead(nn.Module):
         return x
 
 
-class RobertaForSequenceClassification(RobertaPreTrainedModel):
+class RobertaForMultitaskQA(RobertaPreTrainedModel):
     _keys_to_ignore_on_load_missing = [r"position_ids"]
 
     def __init__(self, config, **kwargs):
@@ -97,15 +98,6 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
 
         self.init_weights()
 
-    @add_start_docstrings_to_model_forward(
-        ROBERTA_INPUTS_DOCSTRING.format("batch_size, sequence_length")
-    )
-    @add_code_sample_docstrings(
-        tokenizer_class=_TOKENIZER_FOR_DOC,
-        checkpoint=_CHECKPOINT_FOR_DOC,
-        output_type=SequenceClassifierOutput,
-        config_class=_CONFIG_FOR_DOC,
-    )
     def forward(
         self,
         input_ids=None,
@@ -185,9 +177,9 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
 
             if labels is not None:
                 if self.config.problem_type is None:
-                    if self.num_labels == 1:
+                    if list(self.num_labels.values())[1] == 1:
                         self.config.problem_type = "regression"
-                    elif self.num_labels > 1 and (
+                    elif list(self.num_labels.values())[1] > 1 and (
                         labels.dtype == torch.long or labels.dtype == torch.int
                     ):
                         self.config.problem_type = "single_label_classification"
@@ -196,13 +188,16 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
 
                 if self.config.problem_type == "regression":
                     loss_fct = MSELoss()
-                    if self.num_labels == 1:
+                    if list(self.num_labels.values())[1] == 1:
                         loss = loss_fct(logits.squeeze(), labels.squeeze())
                     else:
                         loss = loss_fct(logits, labels)
                 elif self.config.problem_type == "single_label_classification":
                     loss_fct = CrossEntropyLoss()
-                    loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+                    loss = loss_fct(
+                        logits.view(-1, list(self.num_labels.values())[1]),
+                        labels.view(-1),
+                    )
                 elif self.config.problem_type == "multi_label_classification":
                     loss_fct = BCEWithLogitsLoss()
                     loss = loss_fct(logits, labels)
