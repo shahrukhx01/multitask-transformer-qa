@@ -131,12 +131,12 @@ def main():
         train_dataset=train_dataset,
     )
     trainer.train()
+    ## save model for later use
+    save_model(args.model_name_or_path, multitask_model)
     """
     ## evaluate on given tasks
     multitask_eval_fn(multitask_model, args.model_name_or_path, dataset_dict)
-
-    ## save model for later use
-    save_model(args.model_name_or_path, multitask_model)"""
+    """
 
 
 if __name__ == "__main__":
