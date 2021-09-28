@@ -111,7 +111,11 @@ class SQuADV2Dataset(datasets.GeneratorBasedBuilder):
         """This function returns the examples in the raw (text) form."""
         logger.info("generating examples from = %s", filepath)
         contexts, questions, answers = read_squad(filepath)
-        # contexts, questions, answers = contexts[:10], questions[:10], answers[:10]
+        contexts, questions, answers = (
+            contexts[:10000],
+            questions[:10000],
+            answers[:10000],
+        )
         answers = add_end_idx(answers, contexts)
 
         for idx, (context, question, answer) in enumerate(

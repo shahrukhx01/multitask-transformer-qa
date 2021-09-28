@@ -65,7 +65,7 @@ def main():
 
     multitask_model = RobertaForMultitaskQA.from_pretrained(
         args.model_name_or_path,
-        task_labels_map={"squad_v2": 2, "boolq": 2},
+        task_labels_map={"squad_v2": 2, "boolq": 3},
     )
 
     print(multitask_model.roberta.embeddings.word_embeddings.weight.data_ptr())
@@ -81,6 +81,7 @@ def main():
             "attention_mask",
             "start_positions",
             "end_positions",
+            "labels",
         ],
         "boolq": ["input_ids", "attention_mask", "labels"],
     }

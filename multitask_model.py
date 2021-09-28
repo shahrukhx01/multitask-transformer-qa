@@ -136,7 +136,8 @@ class RobertaForMultitaskQA(RobertaPreTrainedModel):
             return_dict=return_dict,
         )
         sequence_output = outputs[0]
-        if task_name == list(self.num_labels.keys())[0]:
+        ## Commenting since the second head would only decide what type of answer there should be
+        """if task_name == list(self.num_labels.keys())[0]:
             logits = self.qa_outputs(sequence_output)
             start_logits, end_logits = logits.split(1, dim=-1)
             start_logits = start_logits.squeeze(-1).contiguous()
@@ -171,44 +172,44 @@ class RobertaForMultitaskQA(RobertaPreTrainedModel):
                 attentions=outputs.attentions,
             )
 
-        elif task_name == list(self.num_labels.keys())[1]:
-            loss = None
-            logits = self.classifier(sequence_output)
+        elif task_name == list(self.num_labels.keys())[1]:"""
+        loss = None
+        logits = self.classifier(sequence_output)
 
-            if labels is not None:
-                if self.config.problem_type is None:
-                    if list(self.num_labels.values())[1] == 1:
-                        self.config.problem_type = "regression"
-                    elif list(self.num_labels.values())[1] > 1 and (
-                        labels.dtype == torch.long or labels.dtype == torch.int
-                    ):
-                        self.config.problem_type = "single_label_classification"
-                    else:
-                        self.config.problem_type = "multi_label_classification"
+        if labels is not None:
+            if self.config.problem_type is None:
+                if list(self.num_labels.values())[1] == 1:
+                    self.config.problem_type = "regression"
+                elif list(self.num_labels.values())[1] > 1 and (
+                    labels.dtype == torch.long or labels.dtype == torch.int
+                ):
+                    self.config.problem_type = "single_label_classification"
+                else:
+                    self.config.problem_type = "multi_label_classification"
 
-                if self.config.problem_type == "regression":
-                    loss_fct = MSELoss()
-                    if list(self.num_labels.values())[1] == 1:
-                        loss = loss_fct(logits.squeeze(), labels.squeeze())
-                    else:
-                        loss = loss_fct(logits, labels)
-                elif self.config.problem_type == "single_label_classification":
-                    loss_fct = CrossEntropyLoss()
-                    loss = loss_fct(
-                        logits.view(-1, list(self.num_labels.values())[1]),
-                        labels.view(-1),
-                    )
-                elif self.config.problem_type == "multi_label_classification":
-                    loss_fct = BCEWithLogitsLoss()
+            if self.config.problem_type == "regression":
+                loss_fct = MSELoss()
+                if list(self.num_labels.values())[1] == 1:
+                    loss = loss_fct(logits.squeeze(), labels.squeeze())
+                else:
                     loss = loss_fct(logits, labels)
+            elif self.config.problem_type == "single_label_classification":
+                loss_fct = CrossEntropyLoss()
+                loss = loss_fct(
+                    logits.view(-1, list(self.num_labels.values())[1]),
+                    labels.view(-1),
+                )
+            elif self.config.problem_type == "multi_label_classification":
+                loss_fct = BCEWithLogitsLoss()
+                loss = loss_fct(logits, labels)
 
-            if not return_dict:
-                output = (logits,) + outputs[2:]
-                return ((loss,) + output) if loss is not None else output
+        if not return_dict:
+            output = (logits,) + outputs[2:]
+            return ((loss,) + output) if loss is not None else output
 
-            return SequenceClassifierOutput(
-                loss=loss,
-                logits=logits,
-                hidden_states=outputs.hidden_states,
-                attentions=outputs.attentions,
-            )
+        return SequenceClassifierOutput(
+            loss=loss,
+            logits=logits,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
+        )
